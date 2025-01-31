@@ -3,7 +3,8 @@ from bs4 import BeautifulSoup
 import time
 from telegram import Bot
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 import logging
 
 # Ваши данные
@@ -37,17 +38,44 @@ def get_news(category):
 
 # Функция старта бота
 async def start(update: Update, context):
+    keyboard = [
+        [
+            InlineKeyboardButton("Футбол", callback_data="futbol"),
+            InlineKeyboardButton("Хоккей", callback_data="hokkej"),
+        ],
+        [
+            InlineKeyboardButton("Бокс", callback_data="boks"),
+            InlineKeyboardButton("Теннис", callback_data="tennis"),
+        ],
+        [
+            InlineKeyboardButton("Единоборства", callback_data="edinoborstva"),
+            InlineKeyboardButton("Кикбоксинг", callback_data="kickboxing"),
+        ],
+        [
+            InlineKeyboardButton("Биатлон", callback_data="biatlon"),
+            InlineKeyboardButton("Баскетбол", callback_data="basketbol"),
+        ],
+        [
+            InlineKeyboardButton("Легкая атлетика", callback_data="light_attletics"),
+        ]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        "Привет! Напиши мне название категории спорта, и я найду свежие новости 🏆\n\n"
-        "Например: futbol, hokkej, boks, tennis, edinoborstva, kickboxing, biatlon, basketbol, light_attletics"
+        "Привет! Напиши мне название категории спорта, и я найду свежие новости 🏆",
+        reply_markup=reply_markup
     )
 
 
 # Функция обработки сообщений (поиск новостей)
 async def handle_message(update: Update, context):
-    category = update.message.text.lower().strip()  # Получаем запрос от пользователя
+    query = update.callback_query
+    category = query.data  # Получаем категорию спорта из callback_data
+
     news = get_news(category)  # Парсим новости
-    await update.message.reply_text(news, parse_mode="HTML", disable_web_page_preview=True)
+    # Отправляем пользователю новости
+    await query.answer()  # Оповещаем Telegram, что запрос обработан
+    await query.edit_message_text(text=news, parse_mode="HTML", disable_web_page_preview=True)
 
 
 # Главная функция
