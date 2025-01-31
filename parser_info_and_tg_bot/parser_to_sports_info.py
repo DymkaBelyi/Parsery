@@ -68,7 +68,7 @@ async def start(update: Update, context):
 
 
 # Функция обработки сообщений (поиск новостей)
-async def handle_message(update: Update, context):
+async def handle_button(update: Update, context):
     query = update.callback_query
     category = query.data  # Получаем категорию спорта из callback_data
 
@@ -83,7 +83,7 @@ def main():
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))  # Команда /start
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))  # Обработка сообщений
+    app.add_handler(CallbackQueryHandler(handle_button))  # Обработка сообщений
 
     print("Бот запущен...")
     app.run_polling()
