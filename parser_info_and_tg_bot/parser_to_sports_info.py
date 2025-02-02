@@ -6,7 +6,7 @@ import logging
 import os
 from dotenv import load_dotenv
 
-import Pars.Parsery.parser_info_and_tg_bot.keyboards as kb
+import keyboards as kb
 
 
 load_dotenv()
