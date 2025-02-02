@@ -1,6 +1,5 @@
 import requests
 from bs4 import BeautifulSoup
-import time
 from telegram import Bot
 from telegram import Update
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -32,12 +31,12 @@ def get_news(category):
         link = f"https://news.sportbox.ru{item.find('a')['href']}"
         title = item.find('a', class_='title').text.strip()
         news_list.append(f"🔹 <b>{title}</b>\n🔗 {link}")
-
     return "\n\n".join(news_list) if news_list else "Новости не найдены 😢"
 
 
 # Функция старта бота
 async def start(update: Update, context):
+    logging.debug("Получен запрос на старт.")
     keyboard = [
         [
             InlineKeyboardButton("Футбол", callback_data="futbol"),
@@ -69,10 +68,20 @@ async def start(update: Update, context):
 
 # Функция обработки сообщений (поиск новостей)
 async def handle_button(update: Update, context):
+    logging.debug(f"Получено сообщение от {update.message.from_user.username}: {update.message.text}")
     query = update.callback_query
     category = query.data  # Получаем категорию спорта из callback_data
 
-    news = get_news(category)  # Парсим новости
+    logging.debug(f"Категория: {category}")
+
+    # Проверяем, что функция get_news() возвращает новости
+    try:
+        news = get_news(category)  # Парсим новости
+        logging.debug(f"Получены новости: {news}")
+    except Exception as e:
+        logging.error(f"Ошибка при парсинге новостей: {e}")
+        news = "Произошла ошибка при получении новостей."
+
     # Отправляем пользователю новости
     await query.answer()  # Оповещаем Telegram, что запрос обработан
     await query.edit_message_text(text=news, parse_mode="HTML", disable_web_page_preview=True)
