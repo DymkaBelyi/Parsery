@@ -2,25 +2,23 @@ import os
 
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
+import asyncio
+from mistralai import Mistral
 
 
-load_dotenv()
-client = AsyncOpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-)
+async def generate(content):
+    load_dotenv()
+    async with Mistral(
+        api_key=os.getenv("MISTRAL_API_KEY", ""),
+    ) as mistral:
 
-
-async def generate(text) -> None:
-    chat_completion = await client.chat.completions.create(
-        messages=[
+        res = await mistral.chat.complete_async(model="mistral-large-latest", messages=[
             {
+                "content": content,
                 "role": "user",
-                "content": text,
-            }
-        ],
-        model="gpt-4o-mini",
-    )
-
-    return chat_completion.choices[0].message.content
+            },
+        ], stream=False)
+    if res is not None:
+        return res
 
 

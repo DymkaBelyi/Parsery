@@ -34,13 +34,14 @@ async def waiting(message: Message):
 async def gpt(message: Message, state: FSMContext):
     await state.set_state(Reg.wait)
     result = await generate(message.text)
-    await message.answer(result)
+    await message.answer(result.choices[0].message.content)
     await state.clear()
 
 
 async def main():
     bot = Bot(TG_TOKEN)
     await dp.start_polling(bot)
+
 
 if __name__ == '__main__':
     asyncio.run(main())
