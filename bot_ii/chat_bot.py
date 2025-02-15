@@ -1,8 +1,5 @@
 import os
-
 from dotenv import load_dotenv
-from openai import AsyncOpenAI
-import asyncio
 from mistralai import Mistral
 
 
