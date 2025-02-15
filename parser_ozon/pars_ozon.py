@@ -6,7 +6,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
 
-
 def page_down(driver, scroll_count=10, pause_time=1):
     for _ in range(scroll_count):
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -22,12 +21,16 @@ def card_info(driver, url_card=''):
 	driver.get(url=url_card)
 	driver.implicitly_wait(5)
 
-	product_id = driver.find_element(By.XPATH, '/html/body/div[1]/div/div[1]/div[3]/div[2]/div/div/div/div[2]/button[1]/div').text.split('Артикул: ')[1]
+	product_id = driver.find_element(
+		By.XPATH, '/html/body/div[1]/div/div[1]/div[3]/div[2]/div/div/div/div[2]/button[1]/div'
+	).text.split('Артикул: ')[1]
 
-	product_name = driver.find_element(By.XPATH, '/html/body/div[1]/div/div[1]/div[3]/div[3]/div[1]/div[1]/div[2]/div/div/div/div[1]/h1').text
+	product_name = driver.find_element(
+		By.XPATH, '/html/body/div[1]/div/div[1]/div[3]/div[3]/div[1]/div[1]/div[2]/div/div/div/div[1]/h1').text
 
 	try:
-		product_statistic = driver.find_element(By.XPATH, '/html/body/div[1]/div/div[1]/div[3]/div[3]/div[1]/div[1]/div[2]/div/div/div/div[2]/div[1]/a/div').text
+		product_statistic = driver.find_element(
+			By.XPATH, '/html/body/div[1]/div/div[1]/div[3]/div[3]/div[1]/div[1]/div[2]/div/div/div/div[2]/div[1]/a/div').text
 
 		if " • " in product_statistic:
 			products_star = product_statistic.split(" • ")[0].strip()
@@ -41,8 +44,16 @@ def card_info(driver, url_card=''):
 		products_reviews = None
 
 	try:
-		new_price = driver.find_element(By.CSS_SELECTOR, '#layoutPage > div.b6 > div.container.c > div.v8k_27.w1k_27.w3k_27 > div.n2m_27 > div > div > div.v8k_27.w4k_27.w1k_27.k2w_27 > div.l5w_27.wl7_27 > div > div.wl5_27 > div > div > div.lt4_27 > div > div.lu_27 > div.ul_27 > span.l8t_27.tl8_27.l2u_27').text.strip()
-		old_price = driver.find_element(By.CSS_SELECTOR, '#layoutPage > div.b6 > div.container.c > div.v8k_27.w1k_27.w3k_27 > div.n2m_27 > div > div > div.v8k_27.w4k_27.w1k_27.k2w_27 > div.l5w_27.wl7_27 > div > div.wl5_27 > div > div > div.lt4_27 > div > div.lu_27 > div.ul_27 > span.t7l_27.t8l_27.t6l_27.lt8_27').text.strip()
+		new_price = driver.find_element(
+			By.CSS_SELECTOR,
+			'#layoutPage > div.b6 > div.container.c > div.v8k_27.w1k_27.w3k_27 > div.n2m_27 > div > div > '
+			'div.v8k_27.w4k_27.w1k_27.k2w_27 > div.l5w_27.wl7_27 > div > div.wl5_27 > div > div > div.lt4_27 > div > '
+			'div.lu_27 > div.ul_27 > span.l8t_27.tl8_27.l2u_27').text.strip()
+		old_price = driver.find_element(
+			By.CSS_SELECTOR,
+			'#layoutPage > div.b6 > div.container.c > div.v8k_27.w1k_27.w3k_27 > div.n2m_27 > div > div > '
+			'div.v8k_27.w4k_27.w1k_27.k2w_27 > div.l5w_27.wl7_27 > div > div.wl5_27 > div > div > div.lt4_27 > div > '
+			'div.lu_27 > div.ul_27 > span.t7l_27.t8l_27.t6l_27.lt8_27').text.strip()
 
 	except:
 		new_price = None
@@ -87,6 +98,7 @@ def get_links(item_name='умные часы'):
 	# page_down(driver=driver)
 
 	driver.implicitly_wait(5)
+	product_link = 'Ссылки не найдены'
 	try:
 		links = driver.find_elements(By.CLASS_NAME, 'tile-clickable-element')
 
