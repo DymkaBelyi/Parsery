@@ -1,10 +1,12 @@
-import undetected_chromedriver as uc
-import time, random
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import random
+import time
+
 import pandas as pd
+import undetected_chromedriver as uc
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 
 def pars_product():
@@ -66,9 +68,11 @@ def get_info_product(url):
         except:
             data['Цена'] = WebDriverWait(driver, 15).until(EC.presence_of_element_located((
 				By.XPATH, "(//div[@class='price-inner-text'])[1]"))).text
+
         data['Есть ли в наличии'] = driver.find_element(
             By.XPATH, '/html/body/div[8]/article/div[1]/div[2]/section/div/section[2]/div/div/div[1]/strong').text
-        goden_do = driver.find_element(By.XPATH, '/html/body/div[8]/article/div[1]/div[2]/section/div/div[2]/section[1]/ul/li[2]').text
+        goden_do = driver.find_element(
+            By.XPATH, '/html/body/div[8]/article/div[1]/div[2]/section/div/div[2]/section[1]/ul/li[2]').text
         if ": " in goden_do:
             goden = goden_do.split(": ")[0].strip()
             data['Срок годности'] = goden_do.split(": ")[1].strip()

@@ -37,7 +37,7 @@ def get_products():
             all_links.append(links)
         print(f"Страница {page} обработана")
         page += 1
-        if page == 2:  # Установите нужное количество страниц
+        if page == 3:  # Установите нужное количество страниц
             break
     driver.quit()
     return all_links
