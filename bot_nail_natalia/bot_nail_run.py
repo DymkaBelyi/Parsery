@@ -311,7 +311,7 @@ async def delete_appointment_by_id(message: Message):
     command_parts = message.text.split()
     if len(command_parts) < 2:
         await message.answer("⚠ Введите команду в формате: /delete <ID_записи>\nПример: `/delete 5`",
-                             parse_mode="Markdown")
+                             parse_mode="MarkdownV2")
         return
 
     appointment_id = command_parts[1]
