@@ -23,7 +23,8 @@ async def send_reminders():
             tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
 
             # Получаем всех клиентов, записанных на завтра
-            cursor.execute("SELECT user_id, name, phone, date, time FROM appointments WHERE date = ? ORDER BY time ASC", (tomorrow,))
+            cursor.execute("SELECT user_id, name, phone, date, time FROM appointments WHERE date = ? "
+                           "ORDER BY time ASC", (tomorrow,))
             appointments = cursor.fetchall()
 
             if appointments:
@@ -77,3 +78,5 @@ async def delete_old_appointments():
         except Exception as e:
             print(f"Ошибка в delete_old_appointments: {e}")
             await asyncio.sleep(3600)  # Если ошибка, ждем час и пробуем снова
+
+
