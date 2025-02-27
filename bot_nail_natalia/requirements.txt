@@ -1,0 +1,5 @@
+aiogram==3.17.0
+asyncio==3.4.3
+python-telegram-bot==21.10
+python-dotenv==1.0.1
+
