@@ -1,10 +1,10 @@
 import sqlite3
 import os
 from datetime import datetime, timedelta
-import shutil
+
 
 MAX_SLOTS_PER_DAY = 5
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 DB_PATH = "appointments.db"
 
 
@@ -106,14 +106,5 @@ def create_available_keyboards():
 
     return available_dates, available_times_for_dates
 
-
-# Функция делает резервную копию бд
-# def backup_db():
-#     backup_path = os.path.join(BASE_DIR, "appointments_backup.db")
-#     shutil.copyfile(DB_PATH, backup_path)
-#     print("Database backup created successfully.")
-#
-#
-# backup_db()
 
 
