@@ -20,7 +20,7 @@ ADMIN_IDS = [int(admin_id) for admin_id in os.getenv("ADMINS_NAIL", "Ба").spli
 async def send_reminders():
     while True:
         try:
-            tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+            tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d-%m-%Y")
 
             # Получаем всех клиентов, записанных на завтра
             cursor.execute("SELECT user_id, name, phone, date, time FROM appointments WHERE date = ? "
@@ -66,7 +66,7 @@ async def send_reminders():
 async def delete_old_appointments():
     while True:
         try:
-            today = datetime.now().strftime("%Y-%m-%d")
+            today = datetime.now().strftime("%d-%m-%Y")
 
             # Удаляем записи, у которых дата меньше текущей
             cursor.execute("DELETE FROM appointments WHERE date < ?", (today,))

@@ -1,46 +1,50 @@
 import sqlite3
 import os
 from datetime import datetime, timedelta
+import shutil
 
 MAX_SLOTS_PER_DAY = 5
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = "appointments.db"
 
 
 # Инициализация базы данных
 def init_db():
-    # Используем абсолютный путь к файлу базы данных
-    db_path = os.path.abspath("appointments.db")
-
-    # Создаем таблицы, если они не существуют
-    try:
-        with sqlite3.connect(db_path) as conn:
+    # Проверяем, существует ли файл БД
+    if not os.path.exists(DB_PATH):  # ✅ Фикс: не пересоздаём, если уже есть
+        with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
             cursor.execute('''CREATE TABLE IF NOT EXISTS appointments (
-                              id INTEGER PRIMARY KEY AUTOINCREMENT,
-                              user_id INTEGER,
-                              name TEXT,
-                              phone TEXT,
-                              date TEXT,
-                              time TEXT)''')
+                               id INTEGER PRIMARY KEY AUTOINCREMENT,
+                               user_id INTEGER,
+                               name TEXT,
+                               phone TEXT,
+                               date TEXT,
+                               time TEXT)''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS schedule (
-                              date TEXT PRIMARY KEY,
-                              max_slots INTEGER)''')
+                               date TEXT PRIMARY KEY,
+                               max_slots INTEGER)''')
             conn.commit()
-    except sqlite3.OperationalError as e:
-        print(f"Error initializing database: {e}")
+
+
+init_db()
 
 
 # Функция для добавления дат в расписание
 def add_schedule_dates():
-    with sqlite3.connect("appointments.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
-        for i in range(30):
-            date = (datetime.now() + timedelta(days=i)).strftime("%Y-%m-%d")
-            cursor.execute("INSERT OR IGNORE INTO schedule (date, max_slots) VALUES (?, ?)",
-                           (date, MAX_SLOTS_PER_DAY))
-        conn.commit()
+        cursor.execute("SELECT COUNT(*) FROM schedule")
+        count = cursor.fetchone()[0]
+
+        if count == 0:
+            for i in range(30):
+                date = (datetime.now() + timedelta(days=i)).strftime("%d-%m-%Y")
+                cursor.execute("INSERT OR IGNORE INTO schedule (date, max_slots) VALUES (?, ?)",
+                               (date, MAX_SLOTS_PER_DAY))
+            conn.commit()
 
 
-init_db()
 add_schedule_dates()
 
 
@@ -84,7 +88,7 @@ def create_available_keyboards():
 
     # Генерируем даты на два месяца вперед, начиная с 1 апреля
     for i in range(60):  # 60 дней должно охватить два месяца
-        date = (start_date + timedelta(days=i)).strftime("%Y-%m-%d")
+        date = (start_date + timedelta(days=i)).strftime("%d-%m-%Y")
         day_of_week = (start_date + timedelta(days=i)).weekday()
 
         if day_of_week == 2 or day_of_week == 6:
@@ -102,5 +106,14 @@ def create_available_keyboards():
 
     return available_dates, available_times_for_dates
 
+
+# Функция делает резервную копию бд
+# def backup_db():
+#     backup_path = os.path.join(BASE_DIR, "appointments_backup.db")
+#     shutil.copyfile(DB_PATH, backup_path)
+#     print("Database backup created successfully.")
+#
+#
+# backup_db()
 
 
