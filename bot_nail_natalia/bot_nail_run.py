@@ -13,7 +13,6 @@ from datetime import datetime
 from create_bd import create_available_keyboards, add_appointment
 from other_function import send_reminders, delete_old_appointments
 
-
 load_dotenv()
 TOKEN = os.getenv("TOKEN_NAIL")
 
@@ -62,7 +61,7 @@ async def admin_book(message: Message, state: FSMContext):
         await message.answer("Введите имя клиента:")
         await state.set_state(AdminState.name)
     else:
-        await message.answer("У вас нет прав для выполнения этой команды.")
+        await message.answer("⛔ У вас нет прав для выполнения этой команды.")
 
 
 @router.message(AdminState.name)
@@ -82,6 +81,7 @@ async def admin_get_phone(message: Message, state: FSMContext):
 @router.message(AdminState.date)
 async def admin_get_date(message: Message, state: FSMContext):
     selected_date = message.text.strip()
+    update_available_dates()  # Обновляем список дат перед выбором
 
     if selected_date not in available_dates:
         await message.answer("Ошибка! Выбранная дата недоступна. Пожалуйста, выберите другую.")
@@ -95,6 +95,7 @@ async def admin_get_date(message: Message, state: FSMContext):
         return
 
     time_buttons = [[KeyboardButton(text=time)] for time in available_times]
+    time_buttons.append([KeyboardButton(text="Назад")])  # Добавляем кнопку "Назад"
     time_keyboard = ReplyKeyboardMarkup(keyboard=time_buttons, resize_keyboard=True)
     await message.answer("Выберите время:", reply_markup=time_keyboard)
     await state.set_state(AdminState.time)
@@ -104,6 +105,12 @@ async def admin_get_date(message: Message, state: FSMContext):
 async def admin_get_time(message: Message, state: FSMContext):
     user_data = await state.get_data()
     selected_time = message.text.strip()
+
+    if selected_time == "Назад":
+        await message.answer("Выберите дату:", reply_markup=date_keyboard)
+        await state.set_state(AdminState.date)
+        return
+
     selected_date = user_data.get("date")
 
     try:
@@ -173,15 +180,13 @@ async def get_phone(message: Message, state: FSMContext):
 
 @router.message(Booking.date)
 async def get_date(message: Message, state: FSMContext):
+    update_available_dates()  # Обновляем список дат перед выбором
+
     if not available_dates:
         await message.answer("Извините, в данный момент нет свободных мест. Попробуйте записаться немного позже.")
         return
 
     selected_date = message.text.strip()
-
-    if selected_date not in available_dates:
-        await message.answer("Ошибка! Выбранная дата недоступна. Пожалуйста, выберите другую.")
-        return
 
     await state.update_data(date=selected_date)
     available_times = available_times_for_dates.get(selected_date, [])
@@ -191,6 +196,7 @@ async def get_date(message: Message, state: FSMContext):
         return
 
     time_buttons = [[KeyboardButton(text=time)] for time in available_times]
+    time_buttons.append([KeyboardButton(text="Назад")])  # Добавляем кнопку "Назад"
     time_keyboard = ReplyKeyboardMarkup(keyboard=time_buttons, resize_keyboard=True)
     await message.answer("Выберите время:", reply_markup=time_keyboard)
     await state.set_state(Booking.time)
@@ -200,6 +206,12 @@ async def get_date(message: Message, state: FSMContext):
 async def get_time(message: Message, state: FSMContext):
     user_data = await state.get_data()
     selected_time = message.text.strip()
+
+    if selected_time == "Назад":
+        await message.answer("Выберите дату:", reply_markup=date_keyboard)
+        await state.set_state(Booking.date)
+        return
+
     selected_date = user_data.get("date")
     user_id = message.from_user.id  # Получаем user_id из сообщения
 
@@ -230,7 +242,7 @@ async def get_time(message: Message, state: FSMContext):
     update_available_dates()
 
 
-# Обработчик команды "ist", чтобы администратор мог вводить любую дату и посмотреть записи
+# Обработчик команды "list_day", чтобы администратор мог вводить любую дату и посмотреть записи
 @router.message(Command("list_day"))
 async def view_appointments(message: Message, state: FSMContext):
     user_id = message.from_user.id
@@ -238,7 +250,7 @@ async def view_appointments(message: Message, state: FSMContext):
         await message.answer("Введите дату в формате DD-MM-YYYY для просмотра записей на эту дату.")
         await state.set_state(AdminState.view_date)  # Устанавливаем новое состояние
     else:
-        await message.answer("У вас нет прав для выполнения этой команды.")
+        await message.answer("⛔ У вас нет прав для выполнения этой команды.")
 
 
 @router.message(Command("all_list"))
@@ -276,7 +288,6 @@ async def all_appointments(message: Message):
     except sqlite3.Error as e:
         print(f"[Ошибка БД] {e}")  # Вывод ошибки в консоль
         await message.answer("❌ Произошла ошибка при получении списка записей.")
-
 
 conn = sqlite3.connect("appointments.db")
 cursor = conn.cursor()
@@ -316,8 +327,8 @@ async def handle_admin_date(message: Message, state: FSMContext):
 @router.message(Command("cancel"))
 async def cancel_appointment(message: Message, state: FSMContext):
     user_id = message.from_user.id  # Получаем ID пользователя
+    today_date = datetime.now().strftime("%d-%m-%Y")  # Текущая дата в нужном формате
 
-    # Проверяем, есть ли запись у пользователя
     db_path = "appointments.db"
     try:
         with sqlite3.connect(db_path) as conn:
@@ -326,20 +337,29 @@ async def cancel_appointment(message: Message, state: FSMContext):
             appointment = cursor.fetchone()
 
             if appointment:
+                appointment_date, appointment_time = appointment[1], appointment[2]
+
                 # Удаляем запись
                 cursor.execute("DELETE FROM appointments WHERE id = ?", (appointment[0],))
                 conn.commit()
 
                 # Сообщаем пользователю
-                cancellation_text = f"❌ Ваша запись на {datetime.strptime(appointment[1], '%d-%m-%Y').strftime
-                ('%d-%m-%Y')} в {appointment[2]} отменена."
+                cancellation_text = f"❌ Ваша запись на {appointment_date} в {appointment_time} отменена."
                 await message.answer(cancellation_text)
+
+                # Оповещение администраторов, если отмена в день записи
+                if appointment_date == today_date:
+                    alert_text = (f"⚠ Клиент отменил запись в день приёма!\n"
+                                  f"📅 Дата: {appointment_date}\n⏰ Время: {appointment_time}")
+                    for admin_id in ADMIN_IDS:
+                        await bot.send_message(admin_id, alert_text)
+
                 update_available_dates()
             else:
                 await message.answer("⚠ У вас нет активной записи.")
     except sqlite3.Error as e:
         print(f"Database error: {e}")
-        await message.answer("Произошла ошибка при отмене записи. Пожалуйста, попробуйте позже.")
+        await message.answer("❌ Произошла ошибка при отмене записи. Попробуйте позже.")
 
     await state.clear()  # Очищаем состояние после команды удаления
 
