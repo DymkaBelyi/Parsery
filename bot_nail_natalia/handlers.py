@@ -12,6 +12,7 @@ from aiogram.fsm.context import FSMContext
 from other_function import bot
 from create_bd import create_available_keyboards, add_appointment
 
+load_dotenv()
 ADMIN_IDS = [int(admin_id) for admin_id in os.getenv("ADMINS_NAIL", "").split(",")]
 
 router = Router()
