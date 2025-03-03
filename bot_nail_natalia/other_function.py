@@ -5,19 +5,16 @@ import os
 from dotenv import load_dotenv
 from aiogram import Bot
 
+
 load_dotenv()
-
-TOKEN = os.getenv("TOKEN_NAIL")
-bot = Bot(TOKEN)
-
-conn = sqlite3.connect("appointments.db")
-cursor = conn.cursor()
-
+bot = Bot(os.getenv("TOKEN_NAIL"))
 ADMIN_IDS = [int(admin_id) for admin_id in os.getenv("ADMINS_NAIL", "Ба").split(",")]
 
 
 # Функция отправки напоминаний
 async def send_reminders():
+    conn = sqlite3.connect("appointments.db")
+    cursor = conn.cursor()
     while True:
         try:
             tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d-%m-%Y")
@@ -64,6 +61,8 @@ async def send_reminders():
 
 # Функция удаления устаревших записей
 async def delete_old_appointments():
+    conn = sqlite3.connect("appointments.db")
+    cursor = conn.cursor()
     while True:
         try:
             today = datetime.now().strftime("%d-%m-%Y")
