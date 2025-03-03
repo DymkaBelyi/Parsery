@@ -71,8 +71,13 @@ async def delete_old_appointments():
             cursor.execute("DELETE FROM appointments WHERE date < ?", (today,))
             conn.commit()
 
+            # Ждем до следующего дня в 00:00
+            now = datetime.now()
+            next_run = datetime.combine(now.date() + timedelta(days=1), datetime.min.time())
+            sleep_seconds = (next_run - now).total_seconds()
+
             # Ждём до следующего дня (раз в сутки)
-            await asyncio.sleep(86400)  # 24 часа
+            await asyncio.sleep(sleep_seconds)  # 24 часа
 
         except Exception as e:
             print(f"Ошибка в delete_old_appointments: {e}")
