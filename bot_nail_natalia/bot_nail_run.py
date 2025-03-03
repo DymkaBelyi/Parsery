@@ -1,8 +1,7 @@
 import os
 from dotenv import load_dotenv
-
 import asyncio
-from aiogram import Bot, Dispatcher, Router
+from aiogram import Bot, Dispatcher
 
 from other_function import send_reminders, delete_old_appointments
 from handlers import router
