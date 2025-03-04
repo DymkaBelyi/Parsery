@@ -15,17 +15,24 @@ ADMIN_IDS = [int(admin_id) for admin_id in os.getenv("ADMINS_NAIL", "Ба").spli
 async def send_reminders():
     conn = sqlite3.connect("appointments.db")
     cursor = conn.cursor()
+
     while True:
         try:
-            tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d-%m-%Y")
+            now = datetime.now()
+            target_time = now.replace(hour=10, minute=0, second=0, microsecond=0)  # 10:00 утра
 
-            # Получаем всех клиентов, записанных на завтра
+            if now > target_time:
+                target_time += timedelta(days=1)  # Если время уже прошло, ждем до следующего дня
+
+            wait_time = (target_time - now).total_seconds()
+            await asyncio.sleep(wait_time)  # Ждём до 10:00
+
+            tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d-%m-%Y")
             cursor.execute("SELECT user_id, name, phone, date, time FROM appointments WHERE date = ? "
                            "ORDER BY time ASC", (tomorrow,))
             appointments = cursor.fetchall()
 
             if appointments:
-                # Отправляем клиентам напоминания
                 for user_id, name, phone, date, time in appointments:
                     message = (
                         f"🔔 Напоминание!\n"
@@ -39,7 +46,6 @@ async def send_reminders():
                     except Exception as e:
                         print(f"Ошибка отправки клиенту {user_id}: {e}")
 
-                # Отправляем администраторам список записанных клиентов с номерами телефонов
                 admin_message = "📋 Записи на завтра:\n\n"
                 admin_message += "\n\n".join([
                     f"👤 {name}\n📞 {phone}\n⏰ {time}" for _, name, phone, _, time in appointments
@@ -50,9 +56,6 @@ async def send_reminders():
                         await bot.send_message(admin_id, f"\n{admin_message}")
                     except Exception as e:
                         print(f"Ошибка отправки админу {admin_id}: {e}")
-
-            # Ждём до следующего дня (раз в сутки)
-            await asyncio.sleep(86400)  # 24 часа
 
         except Exception as e:
             print(f"Ошибка в send_reminders: {e}")
