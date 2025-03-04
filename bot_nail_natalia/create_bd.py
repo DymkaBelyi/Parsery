@@ -2,17 +2,14 @@ import sqlite3
 import os
 from datetime import datetime, timedelta
 
-
 MAX_SLOTS_PER_DAY = 5
-
-DB_PATH = "appointments.db"
 
 
 # Инициализация базы данных
 def init_db():
     # Проверяем, существует ли файл БД
-    if not os.path.exists(DB_PATH):  # ✅ Фикс: не пересоздаём, если уже есть
-        with sqlite3.connect(DB_PATH) as conn:
+    if not os.path.exists("appointments.db"):  # ✅ Фикс: не пересоздаём, если уже есть
+        with sqlite3.connect("appointments.db") as conn:
             cursor = conn.cursor()
             cursor.execute('''CREATE TABLE IF NOT EXISTS appointments (
                                id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,7 +29,7 @@ init_db()
 
 # Функция для добавления дат в расписание
 def add_schedule_dates():
-    with sqlite3.connect(DB_PATH) as conn:
+    with sqlite3.connect("appointments.db") as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM schedule")
         count = cursor.fetchone()[0]
@@ -64,7 +61,7 @@ def add_appointment(name, phone, date, time, user_id):
         cursor = conn.cursor()
 
         # Проверяем, существует ли уже запись для этого user_id (на любую дату)
-        cursor.execute("SELECT * FROM appointments WHERE user_id = ?", (user_id,))
+        cursor.execute("SELECT id FROM appointments WHERE user_id = ?", (user_id,))
         existing_appointment = cursor.fetchone()
 
         if existing_appointment:
@@ -83,8 +80,15 @@ def create_available_keyboards():
     available_dates = []
     available_times_for_dates = {}
 
+    # Определяем сегодняшнюю дату
+    today = datetime.now().date()
+
     # Определяем начальную дату как 1 апреля текущего года
-    start_date = datetime(datetime.now().year, 4, 1)
+    start_date = datetime(today.year, 4, 1).date()
+
+    # Если 1 апреля уже прошло, начинаем с сегодняшнего дня
+    if today > start_date:
+        start_date = today
 
     # Генерируем даты на два месяца вперед, начиная с 1 апреля
     for i in range(60):  # 60 дней должно охватить два месяца
