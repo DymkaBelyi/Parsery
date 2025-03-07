@@ -7,7 +7,7 @@ from aiogram import Bot
 
 
 load_dotenv()
-bot = Bot(os.getenv("TOKEN_NAIL"))
+bot = Bot(os.getenv("TOKEN_AUTO"))
 ADMIN_IDS = [int(admin_id) for admin_id in os.getenv("ADMINS_NAIL", "Ба").split(",")]
 
 
@@ -64,26 +64,29 @@ async def send_reminders():
 
 # Функция удаления устаревших записей
 async def delete_old_appointments():
-    conn = sqlite3.connect("appointments.db")
-    cursor = conn.cursor()
     while True:
         try:
-            today = datetime.now().strftime("%d-%m-%Y")
+            conn = sqlite3.connect("appointments.db")
+            cursor = conn.cursor()
 
-            # Удаляем записи, у которых дата меньше текущей
-            cursor.execute("DELETE FROM appointments WHERE date < ?", (today,))
+            # Преобразуем хранимый формат даты в YYYY-MM-DD для корректного сравнения
+            cursor.execute("""
+                DELETE FROM appointments 
+                WHERE SUBSTR(date, 7, 4) || '-' || SUBSTR(date, 4, 2) || '-' || SUBSTR(date, 1, 2) < ?
+            """, (datetime.now().strftime("%Y-%m-%d"),))
+
             conn.commit()
+            conn.close()
 
-            # Ждем до следующего дня в 00:00
+            # Рассчитываем время до следующего удаления
             now = datetime.now()
             next_run = datetime.combine(now.date() + timedelta(days=1), datetime.min.time())
             sleep_seconds = (next_run - now).total_seconds()
 
-            # Ждём до следующего дня (раз в сутки)
-            await asyncio.sleep(sleep_seconds)  # 24 часа
+            await asyncio.sleep(sleep_seconds)
 
         except Exception as e:
             print(f"Ошибка в delete_old_appointments: {e}")
-            await asyncio.sleep(3600)  # Если ошибка, ждем час и пробуем снова
+            await asyncio.sleep(3600)  # Если ошибка, ждем 1 час и пробуем снова
 
 
