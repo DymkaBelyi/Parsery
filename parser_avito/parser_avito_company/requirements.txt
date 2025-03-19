@@ -1,0 +1,7 @@
+XlsxWriter==3.2.2
+pandas==2.2.3
+selenium==4.27.1
+undetected-chromedriver==3.5.5
+webdriver-manager==4.0.2
+
+
