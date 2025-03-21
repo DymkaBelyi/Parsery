@@ -61,10 +61,10 @@ def add_appointment(name, phone, date, time, user_id):
         cursor = conn.cursor()
 
         # Проверяем, существует ли уже запись для этого user_id (на любую дату)
-        cursor.execute("SELECT id FROM appointments WHERE user_id = ?", (user_id,))
-        existing_appointment = cursor.fetchone()
+        cursor.execute("SELECT COUNT(*) FROM appointments WHERE user_id = ?", (user_id,))
+        existing_appointment = cursor.fetchone()[0]
 
-        if existing_appointment:
+        if existing_appointment > 1:
             return False  # Если запись уже есть, блокируем новую
 
         # Вставляем новую запись

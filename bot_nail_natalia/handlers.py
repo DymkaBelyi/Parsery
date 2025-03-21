@@ -5,7 +5,8 @@ from aiogram.fsm.state import State, StatesGroup
 import sqlite3
 from datetime import datetime
 from aiogram import Router
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import (CallbackQuery, Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove,
+                           InlineKeyboardMarkup, InlineKeyboardButton, BotCommand, BotCommandScopeChat)
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 
@@ -156,6 +157,24 @@ async def cmd_start(message: Message, state: FSMContext):
     await message.answer("Привет! Я бот для записи на маникюр 💅✨ Выбери удобное время, и я все запомню! Давай начнем! "
                          "Введите ваше имя:")
     await state.set_state(Booking.name)
+
+    # Определяем команды для пользователей и администраторов
+    user_commands = [
+        BotCommand(command="start", description="Начать запись"),
+        BotCommand(command="cancel", description="Удалить запись"),
+    ]
+
+    admin_commands = user_commands + [
+        BotCommand(command="list_day", description="Проверить записи, для администраторов"),
+        BotCommand(command="all_list", description="Посмотреть все записи, только для администратора"),
+        BotCommand(command="admin_book", description="Запись на маникюр для администратора"),
+    ]
+
+    # Устанавливаем команды: для обычных пользователей и отдельно для админов
+    if message.from_user.id in ADMIN_IDS:
+        await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=message.chat.id))
+    else:
+        await bot.set_my_commands(user_commands, scope=BotCommandScopeChat(chat_id=message.chat.id))
 
 
 @router.message(Booking.name)
@@ -321,42 +340,94 @@ async def handle_admin_date(message: Message, state: FSMContext):
 # Обработчик удаления записи на маникюр
 @router.message(Command("cancel"))
 async def cancel_appointment(message: Message, state: FSMContext):
-    user_id = message.from_user.id  # Получаем ID пользователя
-    today_date = datetime.now().strftime("%d-%m-%Y")  # Текущая дата в нужном формате
+    user_id = message.from_user.id
+    today_date = datetime.now().strftime("%d-%m-%Y")
 
     db_path = "appointments.db"
     try:
         with sqlite3.connect(db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT id, date, time FROM appointments WHERE user_id = ?", (user_id,))
-            appointment = cursor.fetchone()
+            appointments = cursor.fetchall()  # Получаем все записи пользователя
 
-            if appointment:
-                appointment_date, appointment_time = appointment[1], appointment[2]
+            if not appointments:
+                await message.answer("⚠ У вас нет активных записей.")
+                return
 
-                # Удаляем запись
-                cursor.execute("DELETE FROM appointments WHERE id = ?", (appointment[0],))
+            # Если одна запись – удаляем сразу
+            if len(appointments) == 1:
+                appointment_id, appointment_date, appointment_time = appointments[0]
+
+                cursor.execute("DELETE FROM appointments WHERE id = ?", (appointment_id,))
                 conn.commit()
 
-                # Сообщаем пользователю
-                cancellation_text = f"❌ Ваша запись на {appointment_date} в {appointment_time} отменена."
-                await message.answer(cancellation_text)
+                await message.answer(f"❌ Ваша запись на {appointment_date} в {appointment_time} отменена.")
 
-                # Оповещение администраторов, если отмена в день записи
+                # Оповещение админов, если запись на сегодня
                 if appointment_date == today_date:
-                    alert_text = (f"<b>❗❗❗ Клиент отменил запись в день приёма❗❗❗</b>\n"
+                    alert_text = (f"<b>❗ Клиент отменил запись в день приёма ❗</b>\n"
                                   f"📅 Дата: {appointment_date}\n⏰ Время: {appointment_time}")
                     for admin_id in ADMIN_IDS:
                         await bot.send_message(admin_id, alert_text, parse_mode="HTML")
 
                 update_available_dates()
-            else:
-                await message.answer("⚠ У вас нет активной записи.")
+                await state.clear()
+                return
+
+            # Если записей несколько – предлагаем выбрать
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text=f"{date} {time}", callback_data=f"cancel_{appointment_id}")]
+                    for appointment_id, date, time in appointments
+                ]
+            )
+            await message.answer("Выберите запись, которую хотите отменить:", reply_markup=keyboard)
+
     except sqlite3.Error as e:
         print(f"Database error: {e}")
-        await message.answer("❌ Произошла ошибка при отмене записи. Попробуйте позже.")
+        await message.answer("❌ Ошибка при отмене записи. Попробуйте позже.")
 
-    await state.clear()  # Очищаем состояние после команды удаления
+    await state.clear()
+
+
+# Обработчик кнопки отмены записи
+@router.callback_query(lambda c: c.data.startswith("cancel_"))
+async def process_cancel_callback(callback_query: CallbackQuery):
+    appointment_id = int(callback_query.data.split("_")[1])
+
+    try:
+        with sqlite3.connect("appointments.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT date, time FROM appointments WHERE id = ?", (appointment_id,))
+            appointment = cursor.fetchone()
+
+            if not appointment:
+                await callback_query.answer("⚠ Запись не найдена.", show_alert=True)
+                return
+
+            appointment_date, appointment_time = appointment
+
+            # Удаляем запись
+            cursor.execute("DELETE FROM appointments WHERE id = ?", (appointment_id,))
+            conn.commit()
+
+            await callback_query.message.edit_text(f"❌ Запись на {appointment_date} в {appointment_time} отменена.")
+
+            # Оповещение админов, если отмена в день приёма
+            today_date = datetime.now().strftime("%d-%m-%Y")
+            if appointment_date == today_date:
+                alert_text = (f"<b>❗ Клиент отменил запись в день приёма ❗</b>\n"
+                              f"📅 Дата: {appointment_date}\n⏰ Время: {appointment_time}")
+                for admin_id in ADMIN_IDS:
+                    await bot.send_message(admin_id, alert_text, parse_mode="HTML")
+
+            update_available_dates()
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        await callback_query.answer("❌ Ошибка при отмене записи.", show_alert=True)
+
+    await callback_query.answer()
 
 
 @router.message(Command("delete"))
