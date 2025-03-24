@@ -34,7 +34,7 @@ async def waiting(message: Message):
 async def gpt(message: Message, state: FSMContext):
     await state.set_state(Reg.wait)
     result = await generate(message.text)
-    await message.answer(result.choices[0].message.content)
+    await message.answer(result.choices[0].message.content, parse_mode="Markdown")
     await state.clear()
 
 
