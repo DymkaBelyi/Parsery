@@ -10,7 +10,7 @@ from handlers import router
 # Основной запуск бота
 async def main():
     load_dotenv()
-    bot = Bot(os.getenv("TOKEN_NAIL"))
+    bot = Bot(os.getenv("TOKEN_AUTO"))
     dp = Dispatcher()
     dp.include_router(router)
 
