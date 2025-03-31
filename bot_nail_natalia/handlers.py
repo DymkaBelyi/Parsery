@@ -19,6 +19,12 @@ ADMIN_IDS = [int(admin_id) for admin_id in os.getenv("ADMINS_NAIL", "").split(",
 router = Router()
 
 
+# Добавили обработки удаления
+class DeleteState(StatesGroup):
+    waiting_for_date = State()
+    waiting_for_id = State()
+
+
 class Booking(StatesGroup):
     name = State()
     phone = State()
@@ -161,13 +167,14 @@ async def cmd_start(message: Message, state: FSMContext):
     # Определяем команды для пользователей и администраторов
     user_commands = [
         BotCommand(command="start", description="Начать запись"),
-        BotCommand(command="cancel", description="Удалить запись"),
+        BotCommand(command="cancel", description="Отменить запись"),
     ]
 
     admin_commands = user_commands + [
         BotCommand(command="list_day", description="Проверить записи, для администраторов"),
         BotCommand(command="all_list", description="Посмотреть все записи, только для администратора"),
         BotCommand(command="admin_book", description="Запись на маникюр для администратора"),
+        BotCommand(command="delete", description="Удалить запись"),
     ]
 
     # Устанавливаем команды: для обычных пользователей и отдельно для админов
@@ -430,25 +437,60 @@ async def process_cancel_callback(callback_query: CallbackQuery):
     await callback_query.answer()
 
 
+# Обработчик команды /delete
 @router.message(Command("delete"))
-async def delete_appointment_by_id(message: Message):
+async def start_delete(message: Message, state: FSMContext):
     user_id = message.from_user.id
     if user_id not in ADMIN_IDS:
         await message.answer("⛔ У вас нет прав для выполнения этой команды.")
         return
 
-    command_parts = message.text.split()
-    if len(command_parts) < 2:
-        await message.answer("⚠ Введите команду в формате: /delete <ID_записи>\nПример: `/delete 5`",
-                             parse_mode="MarkdownV2")
-        return
+    await message.answer("Введите дату в формате DD-MM-YYYY, чтобы посмотреть записи на этот день.")
+    await state.set_state(DeleteState.waiting_for_date)
 
-    appointment_id = command_parts[1]
 
+# Обработчик ввода даты
+@router.message(DeleteState.waiting_for_date)
+async def get_appointments_by_date(message: Message, state: FSMContext):
     try:
-        appointment_id = int(appointment_id)
+        date_str = message.text
+        datetime.strptime(date_str, "%d-%m-%Y")  # Проверяем формат даты
+
+        with sqlite3.connect("appointments.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, name, phone, date, time FROM appointments WHERE date = ?", (date_str,))
+            appointments = cursor.fetchall()
+
+        if not appointments:
+            await message.answer("❌ На эту дату нет записей.")
+            await state.clear()
+            return
+
+        response = f"📅 *Записи на {date_str}:*\n\n"
+        for appointment in appointments:
+            response += (
+                f"*ID:* {appointment[0]}\n"
+                f"👤 *Имя:* {appointment[1]}\n"
+                f"📞 *Телефон:* {appointment[2]}\n"
+                f"📆 *Дата:* {appointment[3]}\n"
+                f"⏰ *Время:* {appointment[4]}\n\n"
+            )
+
+        await message.answer(response, parse_mode="Markdown")
+        await message.answer("✏ Введите *ID записи*, которую хотите удалить.")
+        await state.update_data(date=date_str)
+        await state.set_state(DeleteState.waiting_for_id)
+
     except ValueError:
-        await message.answer("⚠ ID должен быть числом. Попробуйте снова.")
+        await message.answer("⚠ Неверный формат даты. Введите в формате *DD-MM-YYYY*.")
+
+
+@router.message(DeleteState.waiting_for_id)
+async def delete_appointment_by_id(message: Message, state: FSMContext):
+    try:
+        appointment_id = int(message.text)
+    except ValueError:
+        await message.answer("⚠ ID должен быть числом.")
         return
 
     with sqlite3.connect("appointments.db") as conn:
@@ -463,7 +505,11 @@ async def delete_appointment_by_id(message: Message):
         cursor.execute("DELETE FROM appointments WHERE id = ?", (appointment_id,))
         conn.commit()
 
-        await message.answer(f"✅ Запись ID {appointment_id} ({appointment[1]}, {datetime.strptime(
-            appointment[2], '%d-%m-%Y').strftime('%d-%m-%Y')} в {appointment[3]}) удалена.")
+        await message.answer(f"✅ Запись *ID {appointment_id}* удалена:\n"
+                             f"👤 *Имя:* {appointment[1]}\n"
+                             f"📆 *Дата:* {appointment[2]}\n"
+                             f"⏰ *Время:* {appointment[3]}",
+                             parse_mode="Markdown")
 
+    await state.clear()
     update_available_dates()
