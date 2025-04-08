@@ -5,6 +5,7 @@ from aiogram import Bot, Dispatcher
 
 from other_function import send_reminders, delete_old_appointments
 from handlers import router
+from admin_handlers import admin_router
 
 
 # Основной запуск бота
@@ -12,7 +13,7 @@ async def main():
     load_dotenv()
     bot = Bot(os.getenv("TOKEN_AUTO"))
     dp = Dispatcher()
-    dp.include_router(router)
+    dp.include_routers(router, admin_router)
 
     # Запуск фонового процесса для отправки напоминаний
     asyncio.create_task(send_reminders())
